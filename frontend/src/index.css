@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-background text-foreground font-sans antialiased;
+}
+
+/* Visible keyboard focus everywhere — accessibility floor, easy to skip by accident */
+:focus-visible {
+  outline: 2px solid theme('colors.brand.light');
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

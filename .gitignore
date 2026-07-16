@@ -1,0 +1,15 @@
+# Node
+node_modules/
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Datasets and uploads — too large/not meant for git
+ai-training/data/
+server/uploads/
+
+# Trained model (optional — see note below)
+ai-training/*.pt
