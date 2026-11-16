@@ -42,7 +42,8 @@ export default function AdminMap() {
                 <div className="text-sm">
                   <img src={issue.photoUrl} alt={issue.category} className="mb-2 h-24 w-full rounded object-cover" />
                   <p className="font-bold">Issue #{issue._id.slice(-4)}</p>
-                  <p className="capitalize"><strong>Category:</strong> {issue.category}</p>
+                  <p className="capitalize"><strong>Category:</strong> {issue.category?.replace(/_/g, ' ')}</p>
+                  {issue.department && <p><strong>Department:</strong> {issue.department}</p>}
                   <p><strong>Status:</strong> {issue.status}</p>
                   <p><strong>Reported by:</strong> {issue.reportedBy?.name || 'Unknown'}</p>
                 </div>

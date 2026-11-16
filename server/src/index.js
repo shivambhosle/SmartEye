@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import visionRoutes from './routes/vision.js';
 import issueRoutes from './routes/issues.js';
 import leaderboardRoutes from './routes/leaderboard.js';
+import notificationRoutes from './routes/notifications.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/vision', visionRoutes);
 app.use('/api/issues', issueRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const PORT = process.env.PORT || 3000;
 

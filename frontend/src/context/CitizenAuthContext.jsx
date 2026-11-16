@@ -25,8 +25,15 @@ export function CitizenAuthProvider({ children }) {
   }
 
   async function register(name, email, password) {
-    await citizenApi.register({ name, email, password, role: 'citizen' });
-    return login(email, password);
+    return citizenApi.register({ name, email, password, role: 'citizen' });
+  }
+
+  async function verifyOtp(email, otp) {
+    const data = await citizenApi.verifyOtp({ email, otp });
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    setUser(data.user);
+    return data.user;
   }
 
   function logout() {
@@ -36,7 +43,7 @@ export function CitizenAuthProvider({ children }) {
   }
 
   return (
-    <CitizenAuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <CitizenAuthContext.Provider value={{ user, loading, login, register, verifyOtp, logout }}>
       {children}
     </CitizenAuthContext.Provider>
   );

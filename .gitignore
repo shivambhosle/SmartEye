@@ -1,15 +1,32 @@
-# Node
+# Dependencies
 node_modules/
-.env
-
-# Python
 venv/
+.venv/
+
+# Environment Variables & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+server/.env
+frontend/.env
+
+# Build outputs
+dist/
+build/
+
+# Python cache & artifacts
 __pycache__/
 *.pyc
+*.pyo
 
-# Datasets and uploads — too large/not meant for git
+# Datasets, uploads & trained checkpoints
 ai-training/data/
 server/uploads/
-
-# Trained model (optional — see note below)
 ai-training/*.pt
+!ai-training/issue_classifier.pt
+
+# OS & Logs
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*

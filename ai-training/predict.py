@@ -7,11 +7,27 @@ import sys
 import torch
 from torchvision import transforms, models
 import torch.nn as nn
+import os
 from PIL import Image
 
-device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
-checkpoint = torch.load('pothole_classifier.pt', map_location=device)
+checkpoint_path = None
+for candidate in ['issue_classifier.pt', 'pothole_classifier.pt']:
+    dir_path = os.path.join(os.path.dirname(__file__), candidate)
+    if os.path.exists(candidate):
+        checkpoint_path = candidate
+        break
+    elif os.path.exists(dir_path):
+        checkpoint_path = dir_path
+        break
+
+if not checkpoint_path:
+    print("Error: No trained model checkpoint found ('pothole_classifier.pt' or 'issue_classifier.pt').")
+    print("Run `python train.py` first to train the model.")
+    sys.exit(1)
+
+checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 class_names = checkpoint['class_names']
 
 model = models.mobilenet_v2(weights=None)

@@ -2,3 +2,6 @@ torch
 torchvision
 pillow
 scikit-learn
+fastapi
+uvicorn
+python-multipart

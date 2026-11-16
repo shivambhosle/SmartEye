@@ -7,6 +7,8 @@ export default defineConfig({
     proxy: {
       // Lets the frontend call /api/... during dev without CORS headaches
       '/api': 'http://localhost:3000',
+      // Proxies uploaded static image requests to Express during development
+      '/uploads': 'http://localhost:3000',
     },
   },
 });

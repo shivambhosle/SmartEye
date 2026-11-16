@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Locate, Search } from 'lucide-react';
+import { Locate, Search, MapPin } from 'lucide-react';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -35,7 +35,9 @@ function RecenterOnChange({ position, zoom }) {
 }
 
 export default function LocationPicker({ value, onChange }) {
-  const [position, setPosition] = useState(value || DEFAULT_CENTER);
+  const [position, setPosition] = useState(value ? { lat: value.lat, lng: value.lng } : DEFAULT_CENTER);
+  const [address, setAddress] = useState(value?.address || '');
+  const [geocoding, setGeocoding] = useState(false);
   // undefined = don't force a zoom change (used for manual clicks/drags)
   const [focusZoom, setFocusZoom] = useState(undefined);
   const [query, setQuery] = useState('');
@@ -44,14 +46,50 @@ export default function LocationPicker({ value, onChange }) {
   const debounceRef = useRef(null);
 
   useEffect(() => {
-    if (value) setPosition(value);
+    if (value) {
+      setPosition({ lat: value.lat, lng: value.lng });
+      if (value.address) setAddress(value.address);
+    }
   }, [value]);
 
-  function handlePick(latlng, zoom) {
+  async function fetchAddress(lat, lng) {
+    try {
+      setGeocoding(true);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      const data = await res.json();
+      if (data && data.display_name) {
+        const a = data.address || {};
+        const road = a.road || a.pedestrian || a.suburb || a.neighbourhood || '';
+        const area = a.city_district || a.suburb || a.city || a.town || a.county || '';
+        const city = a.city || a.town || a.village || a.state || '';
+        const parts = [road, area, city].filter(Boolean);
+        const resolved = parts.length > 0 ? parts.join(', ') : data.display_name.split(',').slice(0, 3).join(', ');
+        return resolved || data.display_name;
+      }
+    } catch (err) {
+      console.warn('[LocationPicker] Reverse geocode failed:', err);
+    } finally {
+      setGeocoding(false);
+    }
+    return '';
+  }
+
+  async function handlePick(latlng, zoom, explicitAddress) {
     setPosition(latlng);
     setFocusZoom(zoom);
-    onChange(latlng);
     setResults([]);
+
+    let resolvedAddress = explicitAddress;
+    if (!resolvedAddress) {
+      resolvedAddress = await fetchAddress(latlng.lat, latlng.lng);
+    }
+    if (resolvedAddress) {
+      setAddress(resolvedAddress);
+    }
+    onChange({ lat: latlng.lat, lng: latlng.lng, address: resolvedAddress || address });
   }
 
   function useCurrentLocation() {
@@ -60,19 +98,17 @@ export default function LocationPicker({ value, onChange }) {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      // Zoom in close (16) — this is the user's precise location, so a wide
-      // city-level zoom would make the pin easy to miss.
       (pos) => handlePick({ lat: pos.coords.latitude, lng: pos.coords.longitude }, 16),
       () => alert('Could not get your location. Check location permissions and try again.')
     );
   }
 
   function handleSearchChange(e) {
-    const value = e.target.value;
-    setQuery(value);
+    const val = e.target.value;
+    setQuery(val);
 
     clearTimeout(debounceRef.current);
-    if (value.trim().length < 3) {
+    if (val.trim().length < 3) {
       setResults([]);
       return;
     }
@@ -81,7 +117,7 @@ export default function LocationPicker({ value, onChange }) {
       setSearching(true);
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5`
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`
         );
         const data = await res.json();
         setResults(data);
@@ -96,7 +132,8 @@ export default function LocationPicker({ value, onChange }) {
   function selectResult(result) {
     const latlng = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
     setQuery(result.display_name);
-    handlePick(latlng, 16);
+    const shortAddr = result.display_name.split(',').slice(0, 3).join(', ');
+    handlePick(latlng, 16, shortAddr);
   }
 
   return (
@@ -129,16 +166,21 @@ export default function LocationPicker({ value, onChange }) {
       </div>
 
       <div className="mb-3 flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          readOnly
-          value={`${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`}
-          className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted"
-        />
+        <div className="flex-1 flex items-center gap-2.5 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm">
+          <MapPin className="h-4 w-4 text-brand-light flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-semibold text-foreground text-xs sm:text-sm">
+              {geocoding ? 'Detecting street address...' : address || 'Tap map or use button to pin location'}
+            </div>
+            <div className="text-[11px] text-muted font-mono">
+              GPS: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+            </div>
+          </div>
+        </div>
         <button
           type="button"
           onClick={useCurrentLocation}
-          className="flex items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-foreground px-4 py-3 text-sm font-semibold text-background"
+          className="flex items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-foreground px-5 py-3 text-sm font-semibold text-background hover:opacity-90"
         >
           <Locate className="h-4 w-4" />
           Use Current

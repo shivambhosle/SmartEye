@@ -22,13 +22,26 @@ export function createApiClient(tokenKey) {
 
   return {
     register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
+    verifyOtp: (payload) => request('/auth/verify-otp', { method: 'POST', body: payload }),
+    resendOtp: (payload) => request('/auth/resend-otp', { method: 'POST', body: payload }),
     login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
     createIssue: (formData) => request('/issues', { method: 'POST', body: formData, isFormData: true }),
     getMyIssues: () => request('/issues/mine'),
     getAllIssues: () => request('/issues'),
-    updateIssueStatus: (id, status) => request(`/issues/${id}/status`, { method: 'PUT', body: { status } }),
+    updateIssueStatus: (id, status, resolutionPhotoUrl, resolutionNote) =>
+      request(`/issues/${id}/status`, {
+        method: 'PUT',
+        body: { status, resolutionPhotoUrl, resolutionNote },
+      }),
+    checkDuplicates: (lat, lng, category) =>
+      request(`/issues/check-duplicates?lat=${lat}&lng=${lng}&category=${encodeURIComponent(category || '')}`),
+    upvoteIssue: (id) => request(`/issues/${id}/upvote`, { method: 'POST' }),
+    getNotifications: () => request('/notifications'),
+    markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PATCH' }),
+    markAllNotificationsRead: () => request('/notifications/read-all', { method: 'PATCH' }),
     getLeaderboard: () => request('/leaderboard'),
-    suggestCategory: (formData) => request('/vision/local-analyze', { method: 'POST', body: formData, isFormData: true }),
+    suggestCategory: (formData) =>
+      request('/vision/local-analyze', { method: 'POST', body: formData, isFormData: true }),
   };
 }
 

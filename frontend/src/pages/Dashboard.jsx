@@ -26,7 +26,7 @@ function computeResolutionByCategory(issues) {
     byCategory[i.category].count += 1;
   });
   return Object.entries(byCategory).map(([category, { total, count }]) => ({
-    category,
+    category: category.replace(/_/g, ' '),
     days: Number((total / count).toFixed(1)),
   }));
 }
@@ -154,8 +154,24 @@ export default function Dashboard() {
                         <img src={issue.photoUrl} alt={issue.category} className="h-10 w-10 rounded object-cover" />
                       </td>
                       <td className="px-4 py-3">#{issue._id.slice(-4)}</td>
-                      <td className="px-4 py-3 capitalize">{issue.category}</td>
-                      <td className="px-4 py-3">{issue.location.lat.toFixed(3)}, {issue.location.lng.toFixed(3)}</td>
+                      <td className="px-4 py-3">
+                        <div className="capitalize">{issue.category?.replace(/_/g, ' ')}</div>
+                        {issue.captureMode === 'live' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                            📷 Live Verified
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        <div className="truncate font-medium text-xs" title={issue.location?.address || `${issue.location?.lat}, ${issue.location?.lng}`}>
+                          {issue.location?.address || `${issue.location?.lat.toFixed(3)}, ${issue.location?.lng.toFixed(3)}`}
+                        </div>
+                        {issue.location?.address && (
+                          <div className="text-[10px] text-muted font-mono">
+                            {issue.location?.lat.toFixed(3)}, {issue.location?.lng.toFixed(3)}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3"><PriorityBadge priority={issue.priority} /></td>
                       <td className="px-4 py-3"><StatusBadge status={issue.status} /></td>
                       <td className="whitespace-nowrap px-4 py-3">{new Date(issue.createdAt).toLocaleDateString()}</td>
@@ -175,9 +191,14 @@ export default function Dashboard() {
                       <StatusBadge status={issue.status} />
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted">
-                      <span className="capitalize">{issue.category}</span>
+                      <span className="capitalize">{issue.category?.replace(/_/g, ' ')}</span>
                       <PriorityBadge priority={issue.priority} />
                     </div>
+                    {issue.location?.address && (
+                      <div className="mt-1 truncate text-[11px] text-muted">
+                        📍 {issue.location.address}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

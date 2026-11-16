@@ -1,19 +1,13 @@
 import { Link } from 'react-router-dom';
-import { Camera, MapPin, Trophy, Shield, LineChart, Smartphone } from 'lucide-react';
-
-const stats = [
-  { value: '1,247', label: 'Issues Reported' },
-  { value: '89%', label: 'Resolution Rate' },
-  { value: '2.3k', label: 'Active Citizens' },
-];
+import { Camera, MapPin, Building2, Shield, LineChart, Smartphone } from 'lucide-react';
 
 const features = [
   { icon: Camera, title: 'AI-Powered Classification', desc: 'Automatically categorize issues using advanced image recognition technology' },
   { icon: MapPin, title: 'Real-time Tracking', desc: 'Track issue status and location updates in real-time with precise GPS' },
-  { icon: Trophy, title: 'Gamification', desc: 'Earn points and badges for active civic participation and reporting' },
-  { icon: Shield, title: 'Duplicate Detection', desc: 'Smart algorithms prevent duplicate reports and optimize resource allocation' },
-  { icon: LineChart, title: 'Analytics Dashboard', desc: 'Comprehensive insights for government authorities to track performance' },
-  { icon: Smartphone, title: 'Mobile-First Design', desc: 'Optimized for mobile devices with intuitive user experience' },
+  { icon: Building2, title: 'Direct Department Routing', desc: 'Complaints route straight to the designated municipal wing for quick action' },
+  { icon: Shield, title: 'Duplicate & Spoof Protection', desc: 'Smart algorithms filter duplicate tickets and verify authentic on-site photos' },
+  { icon: LineChart, title: 'Analytics Dashboard', desc: 'Comprehensive insights for government authorities to track resolution velocity' },
+  { icon: Smartphone, title: 'Mobile-First Design', desc: 'Optimized for mobile devices with responsive camera and GPS interaction' },
 ];
 
 export default function Home() {
@@ -30,8 +24,8 @@ export default function Home() {
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted">
-              Connect citizens with government authorities through AI-powered issue
-              classification, real-time tracking, and gamified civic engagement.
+              Report neighborhood issues directly to your municipal corporation. Automated photo verification,
+              direct department dispatch, and transparent resolution tracking.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -49,14 +43,51 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Stats — stack full-width on mobile instead of staying pinned right */}
-          <div className="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-4">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-xl border border-border bg-surface p-4 lg:p-6">
-                <div className="text-2xl font-extrabold sm:text-3xl">{s.value}</div>
-                <div className="mt-1 text-xs text-muted sm:text-sm">{s.label}</div>
+          {/* 3-Step Civic Resolution Card replacing fake stats */}
+          <div className="rounded-2xl border border-border bg-surface/70 p-6 sm:p-8 backdrop-blur shadow-xl">
+            <div className="mb-5 flex items-center justify-between border-b border-border/60 pb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-light">How SmartEye Works</span>
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
+                3-Step Resolution
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/20 text-xs font-extrabold text-brand-light">
+                  1
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Snap & Locate</h4>
+                  <p className="text-xs text-muted">Take a photo. Our vision AI auto-suggests category and captures verified GPS.</p>
+                </div>
               </div>
-            ))}
+
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/20 text-xs font-extrabold text-brand-light">
+                  2
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Direct Dept. Routing</h4>
+                  <p className="text-xs text-muted">Tickets route directly to the designated municipal wing (Roads, Waste, Water, Electrical).</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/20 text-xs font-extrabold text-brand-light">
+                  3
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Track to Resolution</h4>
+                  <p className="text-xs text-muted">Receive live notifications as city crews inspect, repair, and close the complaint.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-border/60 pt-4 flex items-center justify-between text-xs text-muted">
+              <span>7 Municipal Categories</span>
+              <span className="text-emerald-400 font-medium">Verified On-Site Triage</span>
+            </div>
           </div>
         </div>
       </section>

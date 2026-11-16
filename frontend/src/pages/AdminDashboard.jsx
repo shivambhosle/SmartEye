@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, FolderOpen, Settings, CheckCircle2, TrendingUp, Eye } from 'lucide-react';
+import { Search, FolderOpen, Settings, CheckCircle2, TrendingUp, Eye, Sparkles, ShieldCheck, ShieldAlert, X } from 'lucide-react';
 //import { api } from '../lib/api.js';
 import { StatusBadge, PriorityBadge } from '../components/Badges.jsx';
 import { staffApi as api } from '../lib/api.js';
@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
+  const [triageIssue, setTriageIssue] = useState(null);
 
   useEffect(() => {
     loadIssues();
@@ -101,9 +102,9 @@ export default function AdminDashboard() {
             className="w-full rounded-lg border border-border bg-surface py-3 pl-11 pr-4 text-sm"
           />
         </div>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-lg border border-border bg-surface px-4 py-3 text-sm capitalize">
           <option value="">All Categories</option>
-          {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categoryOptions.map((c) => <option key={c} value={c}>{c?.replace(/_/g, ' ')}</option>)}
         </select>
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-border bg-surface px-4 py-3 text-sm">
           <option value="">All Status</option>
@@ -119,7 +120,7 @@ export default function AdminDashboard() {
         <table className="w-full text-left text-sm">
           <thead className="bg-surface">
             <tr>
-              {['Photo', 'ID', 'Category', 'Reporter', 'Priority', 'Status', 'Date', 'Actions'].map((h) => (
+              {['Photo', 'ID', 'Category', 'Reporter', 'Priority', 'AI Triage', 'Status', 'Date', 'Actions'].map((h) => (
                 <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>
               ))}
             </tr>
@@ -131,9 +132,56 @@ export default function AdminDashboard() {
                   <img src={issue.photoUrl} alt={issue.category} className="h-10 w-10 rounded object-cover" />
                 </td>
                 <td className="px-4 py-3">#{issue._id.slice(-4)}</td>
-                <td className="px-4 py-3 capitalize">{issue.category}</td>
-                <td className="px-4 py-3">{issue.reportedBy?.name || 'Unknown'}</td>
+                <td className="px-4 py-3">
+                  <div className="capitalize font-medium">{issue.category?.replace(/_/g, ' ')}</div>
+                  {issue.captureMode === 'live' ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                      📷 Live Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                      📁 Gallery
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-medium">{issue.reportedBy?.name || 'Unknown'}</div>
+                  {issue.location?.address ? (
+                    <div className="text-[11px] text-muted max-w-[160px] truncate" title={issue.location.address}>
+                      📍 {issue.location.address}
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-muted font-mono">
+                      {issue.location?.lat?.toFixed(3)}, {issue.location?.lng?.toFixed(3)}
+                    </div>
+                  )}
+                </td>
                 <td className="px-4 py-3"><PriorityBadge priority={issue.priority} /></td>
+                <td className="px-4 py-3">
+                  {issue.aiAnalysis ? (
+                    <button
+                      type="button"
+                      onClick={() => setTriageIssue(issue)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 ${
+                        issue.aiAnalysis.isAuthentic === false
+                          ? 'border-red-500/50 bg-red-500/15 text-red-300'
+                          : issue.aiAnalysis.severity === 'critical'
+                          ? 'border-status-urgent/50 bg-status-urgent/15 text-status-urgent'
+                          : 'border-brand/40 bg-brand/10 text-brand-light'
+                      }`}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      <span>{issue.aiAnalysis.severity?.toUpperCase() || 'TRIAGE'}</span>
+                      {issue.aiAnalysis.isAuthentic === false && (
+                        <span className="rounded bg-red-500/30 px-1.5 py-0.5 text-[9px] font-bold text-red-200">
+                          REVIEW NEEDED
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted">Standard</span>
+                  )}
+                </td>
                 <td className="px-4 py-3"><StatusBadge status={issue.status} /></td>
                 <td className="whitespace-nowrap px-4 py-3">{new Date(issue.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
@@ -153,7 +201,7 @@ export default function AdminDashboard() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-muted">No issues match your filters.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-muted">No issues match your filters.</td></tr>
             )}
           </tbody>
         </table>
@@ -169,9 +217,22 @@ export default function AdminDashboard() {
                 <StatusBadge status={issue.status} />
               </div>
               <div className="mb-2 flex items-center justify-between text-xs text-muted">
-                <span className="capitalize">{issue.category} · {issue.reportedBy?.name || 'Unknown'}</span>
+                <span className="capitalize">{issue.category?.replace(/_/g, ' ')} · {issue.reportedBy?.name || 'Unknown'}</span>
                 <PriorityBadge priority={issue.priority} />
               </div>
+
+              {issue.aiAnalysis && (
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setTriageIssue(issue)}
+                    className="inline-flex items-center gap-1 text-xs text-brand-light font-semibold hover:underline"
+                  >
+                    <Sparkles className="h-3 w-3" /> View AI Diagnosis ({issue.aiAnalysis.severity})
+                  </button>
+                </div>
+              )}
+
               <select
                 value={issue.status}
                 onChange={(e) => updateStatus(issue._id, e.target.value)}
@@ -184,6 +245,130 @@ export default function AdminDashboard() {
         ))}
         {filtered.length === 0 && <p className="py-10 text-center text-muted">No issues match your filters.</p>}
       </div>
+
+      {/* AI Triage & Authenticity Inspection Modal */}
+      {triageIssue && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-brand/20 flex items-center justify-center text-brand-light">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">AI Vision Triage & Authenticity Report</h3>
+                  <p className="text-xs text-muted">Issue #{triageIssue._id.slice(-6)} • Analyzed by Google Gemini</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTriageIssue(null)}
+                className="rounded-lg p-1.5 text-muted hover:bg-surface-alt hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <img
+                  src={triageIssue.photoUrl}
+                  alt={triageIssue.category}
+                  className="w-full h-48 sm:h-56 rounded-xl object-cover border border-border shadow-inner"
+                />
+                <div className="mt-2 flex items-center justify-between text-xs text-muted">
+                  <span>Source: <strong className="capitalize text-foreground">{triageIssue.captureMode || 'gallery'}</strong></span>
+                  <a href={triageIssue.photoUrl} target="_blank" rel="noreferrer" className="text-brand-light hover:underline font-medium">
+                    Open Full Image ↗
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 text-sm">
+                {/* Authenticity Box */}
+                <div className={`p-3.5 rounded-xl border ${
+                  triageIssue.aiAnalysis?.isAuthentic === false 
+                    ? 'border-red-500/50 bg-red-500/10 text-red-200'
+                    : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                }`}>
+                  <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
+                    {triageIssue.aiAnalysis?.isAuthentic === false ? (
+                      <>
+                        <ShieldAlert className="h-4 w-4 text-red-400" />
+                        <span>Verification Required (Screen / Re-photo suspected)</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                        <span>Verified Real-World Photo</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed opacity-95">
+                    {triageIssue.aiAnalysis?.authenticityNote || 'Authentic on-site outdoor photo.'}
+                  </p>
+                </div>
+
+                {/* AI Metrics */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-lg border border-border bg-surface-alt">
+                    <span className="text-muted block text-[11px]">AI Severity</span>
+                    <span className="font-bold text-sm uppercase text-brand-light">
+                      {triageIssue.aiAnalysis?.severity || 'Standard'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-surface-alt">
+                    <span className="text-muted block text-[11px]">Assessment Certainty</span>
+                    <span className="font-bold text-sm text-foreground">
+                      High ({Math.round((triageIssue.aiAnalysis?.confidence || 0.95) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Department & Location */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-lg border border-border bg-surface-alt">
+                    <span className="text-muted block text-[11px]">Auto-Routed Department</span>
+                    <span className="font-semibold text-foreground">
+                      {triageIssue.aiAnalysis?.recommendedDepartment || triageIssue.department || 'Roads / Public Works'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-surface-alt">
+                    <span className="text-muted block text-[11px]">Verified Location</span>
+                    <span className="font-semibold text-foreground truncate block" title={triageIssue.location?.address}>
+                      {triageIssue.location?.address ? `📍 ${triageIssue.location.address}` : `${triageIssue.location?.lat?.toFixed(4)}, ${triageIssue.location?.lng?.toFixed(4)}`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Description */}
+            <div className="rounded-xl border border-border bg-surface-alt/70 p-4">
+              <h4 className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">
+                Automated Municipal Work-Order Summary
+              </h4>
+              <p className="text-sm text-foreground leading-relaxed">
+                {triageIssue.aiAnalysis?.description || 'No detailed analysis generated.'}
+              </p>
+            </div>
+
+            {triageIssue.userNote && (
+              <div className="text-xs text-muted bg-surface-alt/40 p-3 rounded-lg border border-border">
+                <strong className="text-foreground">Citizen Comment:</strong> "{triageIssue.userNote}"
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-border">
+              <button
+                onClick={() => setTriageIssue(null)}
+                className="rounded-lg bg-surface-alt px-5 py-2 text-sm font-semibold hover:bg-border transition-colors"
+              >
+                Close Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

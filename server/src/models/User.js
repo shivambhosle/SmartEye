@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema(
     // Gamification (Phase 5) — modeled now so we don't have to migrate data later
     points: { type: Number, default: 0 },
     badges: [{ type: String }],
+
+    // Anti-bot & Account Verification (OTP / Email)
+    isVerified: { type: Boolean, default: false },
+    verificationOtp: { type: String },
+    otpExpiresAt: { type: Date },
   },
   { timestamps: true } // adds createdAt / updatedAt automatically
 );
