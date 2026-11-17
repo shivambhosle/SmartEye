@@ -22,7 +22,9 @@ export function createApiClient(tokenKey) {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.message || `Request failed with status ${response.status}`);
+      const err = new Error(data.message || `Request failed with status ${response.status}`);
+      err.data = data;
+      throw err;
     }
     return data;
   }

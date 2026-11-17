@@ -9,11 +9,13 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [unverifiedInfo, setUnverifiedInfo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setUnverifiedInfo(null);
     setSubmitting(true);
     try {
       await login(email, password);
@@ -22,7 +24,15 @@ export default function Login() {
       // happens to have an admin/officer role in the database.
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      if (err.data?.requiresVerification) {
+        setUnverifiedInfo({
+          email: err.data.email || email,
+          debugOtp: err.data.debugOtp || '',
+        });
+        setError('Please verify your email address to continue.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -58,7 +68,26 @@ export default function Login() {
             />
           </div>
 
-          {error && <p className="text-sm text-status-urgent">{error}</p>}
+          {error && (
+            <div className="rounded-lg bg-status-urgent/10 border border-status-urgent/20 p-3 text-sm text-status-urgent space-y-2">
+              <p>{error}</p>
+              {unverifiedInfo && (
+                <div className="pt-1 border-t border-status-urgent/20 flex flex-col gap-1 text-xs">
+                  {unverifiedInfo.debugOtp && (
+                    <span className="text-brand-light font-mono">
+                      Verification code detected: <strong>{unverifiedInfo.debugOtp}</strong>
+                    </span>
+                  )}
+                  <Link
+                    to={`/signup?verifyEmail=${encodeURIComponent(unverifiedInfo.email)}&otp=${encodeURIComponent(unverifiedInfo.debugOtp)}`}
+                    className="font-semibold text-brand-light hover:underline inline-flex items-center gap-1"
+                  >
+                    Click here to enter code & activate account →
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"

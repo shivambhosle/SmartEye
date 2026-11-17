@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, ShieldCheck, RefreshCw } from 'lucide-react';
 import { useCitizenAuth } from '../context/CitizenAuthContext.jsx';
 import { citizenApi } from '../lib/api.js';
@@ -7,6 +7,7 @@ import { citizenApi } from '../lib/api.js';
 export default function Signup() {
   const { register, verifyOtp } = useCitizenAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [step, setStep] = useState('signup'); // 'signup' | 'verify'
   const [name, setName] = useState('');
@@ -18,6 +19,21 @@ export default function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
 
+  useEffect(() => {
+    const verifyEmail = searchParams.get('verifyEmail');
+    const paramOtp = searchParams.get('otp');
+    if (verifyEmail) {
+      setEmail(verifyEmail);
+      setStep('verify');
+      if (paramOtp) {
+        setOtp(paramOtp);
+        setInfo(`Verification code auto-detected: [${paramOtp}]`);
+      } else {
+        setInfo(`Please verify your email address: ${verifyEmail}`);
+      }
+    }
+  }, [searchParams]);
+
   async function handleSignup(e) {
     e.preventDefault();
     setError('');
@@ -27,7 +43,12 @@ export default function Signup() {
       const res = await register(name, email, password);
       if (res && res.requiresVerification) {
         setStep('verify');
-        setInfo('We sent a 6-digit verification code to your email. (Check your inbox or dev terminal)');
+        if (res.debugOtp) {
+          setOtp(res.debugOtp);
+          setInfo(`Verification code auto-detected: [${res.debugOtp}]`);
+        } else {
+          setInfo('We sent a 6-digit verification code to your email.');
+        }
       } else {
         navigate('/dashboard');
       }
@@ -57,7 +78,12 @@ export default function Signup() {
     setResending(true);
     try {
       const res = await citizenApi.resendOtp({ email });
-      setInfo(res.message || 'New code sent!');
+      if (res && res.debugOtp) {
+        setOtp(res.debugOtp);
+        setInfo(`New verification code auto-detected: [${res.debugOtp}]`);
+      } else {
+        setInfo(res.message || 'New code sent!');
+      }
     } catch (err) {
       setError(err.message);
     } finally {

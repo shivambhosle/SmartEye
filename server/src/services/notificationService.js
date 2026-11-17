@@ -1,5 +1,73 @@
 import nodemailer from 'nodemailer';
 
+/**
+ * Universal email sender that supports:
+ * 1. Resend REST API (over HTTPS Port 443 - NEVER blocked by cloud firewalls like Render Free)
+ * 2. Nodemailer SMTP (for local dev or servers with open SMTP ports)
+ * 3. Dev Mode fallback (logs to console)
+ */
+async function sendEmail({ to, subject, html, devSummary }) {
+  if (!to) return { sent: false };
+
+  // 1. Try Resend REST API (HTTPS Port 443) if configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const fromAddr = process.env.SMTP_FROM || 'SmartEye <onboarding@resend.dev>';
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromAddr,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`[Notification Service] Email delivered via Resend API to ${to}: ${data.id}`);
+        return { sent: true, messageId: data.id };
+      }
+      console.warn(`[Notification Service] Resend API responded with error:`, data);
+    } catch (err) {
+      console.error(`[Notification Service] Resend API request failed:`, err.message);
+    }
+  }
+
+  // 2. Try Nodemailer SMTP (with strict 4s timeout so Render never hangs)
+  const transporter = getTransporter();
+  if (transporter) {
+    try {
+      const fromAddr = process.env.SMTP_FROM || `"${process.env.SMTP_FROM_NAME || 'SmartEye Civic Care'}" <${process.env.SMTP_USER}>`;
+      const info = await transporter.sendMail({
+        from: fromAddr,
+        to,
+        subject,
+        html,
+      });
+      console.log(`[Notification Service] Email delivered via SMTP to ${to}: ${info.messageId}`);
+      return { sent: true, messageId: info.messageId };
+    } catch (err) {
+      console.warn(`[Notification Service] SMTP delivery failed (${err.code || err.message}). Note: Render Free blocks ports 465/587.`);
+      return { sent: false, error: err.message };
+    }
+  }
+
+  // 3. Dev Mode logging
+  if (devSummary) {
+    console.log(`\n======================================================`);
+    console.log(`[Notification Service] (DEV / CONSOLE MODE)`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    devSummary();
+    console.log(`======================================================\n`);
+  }
+  return { sent: false, devMode: true };
+}
+
 // Helper to configure transporter with environment variables
 export function getTransporter() {
   const host = process.env.SMTP_HOST;
@@ -9,14 +77,17 @@ export function getTransporter() {
   const service = process.env.SMTP_SERVICE;
 
   if (!user || !pass) {
-    return null; // SMTP not configured, operate in development log mode
+    return null; // SMTP not configured
   }
 
-  // If using Gmail (either specified by service or host containing gmail)
+  // If using Gmail
   if (service?.toLowerCase() === 'gmail' || host?.includes('gmail')) {
     return nodemailer.createTransport({
       service: 'gmail',
       auth: { user, pass },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
     });
   }
 
@@ -25,6 +96,9 @@ export function getTransporter() {
     port,
     secure: port === 465,
     auth: { user, pass },
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 4000,
   });
 }
 
@@ -34,7 +108,6 @@ export function getTransporter() {
 export async function sendIssueRegisteredEmail({ toEmail, userName, issue }) {
   if (!toEmail) return { sent: false };
 
-  const transporter = getTransporter();
   const readableCategory = (issue.category || 'Civic Issue').replace(/_/g, ' ').toUpperCase();
   const issueIdShort = String(issue._id).slice(-6).toUpperCase();
   const departmentName = issue.department || 'Municipal Grievance Cell';
@@ -76,29 +149,14 @@ export async function sendIssueRegisteredEmail({ toEmail, userName, issue }) {
     </div>
   `;
 
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`[Notification Service] (DEV MODE - SMTP not configured)`);
-    console.log(`To: ${toEmail} (${userName})`);
-    console.log(`Subject: [SmartEye] Issue #${issueIdShort} Registered: ${readableCategory}`);
-    console.log(`Assigned Department: ${departmentName}`);
-    console.log(`======================================================\n`);
-    return { sent: false, devMode: true };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"${process.env.SMTP_FROM_NAME || 'SmartEye Civic Care'}" <${process.env.SMTP_USER}>`,
-      to: toEmail,
-      subject: `[SmartEye] Issue #${issueIdShort} Registered: ${readableCategory}`,
-      html: htmlContent,
-    });
-    console.log(`[Notification Service] Registration email sent to ${toEmail}: ${info.messageId}`);
-    return { sent: true, messageId: info.messageId };
-  } catch (err) {
-    console.error(`[Notification Service] Failed to send registration email to ${toEmail}:`, err.message);
-    return { sent: false, error: err.message };
-  }
+  return sendEmail({
+    to: toEmail,
+    subject: `[SmartEye] Issue #${issueIdShort} Registered: ${readableCategory}`,
+    html: htmlContent,
+    devSummary: () => {
+      console.log(`Assigned Department: ${departmentName}`);
+    },
+  });
 }
 
 /**
@@ -107,7 +165,6 @@ export async function sendIssueRegisteredEmail({ toEmail, userName, issue }) {
 export async function sendLoginAlertEmail({ toEmail, userName, time, ip, userAgent }) {
   if (!toEmail) return { sent: false };
 
-  const transporter = getTransporter();
   const formattedTime = time ? new Date(time).toLocaleString() : new Date().toLocaleString();
 
   const htmlContent = `
@@ -138,29 +195,14 @@ export async function sendLoginAlertEmail({ toEmail, userName, time, ip, userAge
     </div>
   `;
 
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`[Notification Service] (DEV MODE - SMTP not configured)`);
-    console.log(`To: ${toEmail} (${userName})`);
-    console.log(`Subject: [SmartEye] Security Alert: New Login at ${formattedTime}`);
-    console.log(`IP: ${ip} | UserAgent: ${userAgent}`);
-    console.log(`======================================================\n`);
-    return { sent: false, devMode: true };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"${process.env.SMTP_FROM_NAME || 'SmartEye Civic Care'}" <${process.env.SMTP_USER}>`,
-      to: toEmail,
-      subject: `[SmartEye] Security Alert: New Login to your Account`,
-      html: htmlContent,
-    });
-    console.log(`[Notification Service] Login alert email sent to ${toEmail}: ${info.messageId}`);
-    return { sent: true, messageId: info.messageId };
-  } catch (err) {
-    console.error(`[Notification Service] Failed to send login email to ${toEmail}:`, err.message);
-    return { sent: false, error: err.message };
-  }
+  return sendEmail({
+    to: toEmail,
+    subject: `[SmartEye] Security Alert: New Login to your Account`,
+    html: htmlContent,
+    devSummary: () => {
+      console.log(`IP: ${ip} | UserAgent: ${userAgent}`);
+    },
+  });
 }
 
 /**
@@ -169,7 +211,6 @@ export async function sendLoginAlertEmail({ toEmail, userName, time, ip, userAge
 export async function sendStatusUpdateEmail({ toEmail, userName, issue, newStatus, resolutionPhotoUrl, officerNote }) {
   if (!toEmail) return { sent: false };
 
-  const transporter = getTransporter();
   const statusLabels = {
     'open': 'Registered / Under Review',
     'in-progress': 'In Progress (Municipal Crew Assigned)',
@@ -226,29 +267,14 @@ export async function sendStatusUpdateEmail({ toEmail, userName, issue, newStatu
     </div>
   `;
 
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`[Notification Service] (DEV MODE - SMTP not configured)`);
-    console.log(`To: ${toEmail} (${userName})`);
-    console.log(`Subject: [SmartEye] Update on #${issueIdShort}: ${readableStatus}`);
-    console.log(`Category: ${readableCategory} | New Status: ${newStatus}`);
-    console.log(`======================================================\n`);
-    return { sent: false, devMode: true };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"${process.env.SMTP_FROM_NAME || 'SmartEye Civic Care'}" <${process.env.SMTP_USER}>`,
-      to: toEmail,
-      subject: `[SmartEye] Update on #${issueIdShort}: ${readableStatus}`,
-      html: htmlContent,
-    });
-    console.log(`[Notification Service] Status email sent to ${toEmail}: ${info.messageId}`);
-    return { sent: true, messageId: info.messageId };
-  } catch (err) {
-    console.error(`[Notification Service] Failed to send email to ${toEmail}:`, err.message);
-    return { sent: false, error: err.message };
-  }
+  return sendEmail({
+    to: toEmail,
+    subject: `[SmartEye] Update on #${issueIdShort}: ${readableStatus}`,
+    html: htmlContent,
+    devSummary: () => {
+      console.log(`Category: ${readableCategory} | New Status: ${newStatus}`);
+    },
+  });
 }
 
 /**
@@ -256,7 +282,6 @@ export async function sendStatusUpdateEmail({ toEmail, userName, issue, newStatu
  */
 export async function sendVerificationOtpEmail({ toEmail, userName, otp }) {
   if (!toEmail) return { sent: false };
-  const transporter = getTransporter();
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
@@ -270,25 +295,12 @@ export async function sendVerificationOtpEmail({ toEmail, userName, otp }) {
     </div>
   `;
 
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`[Verification Service] (DEV MODE - OTP generated)`);
-    console.log(`To: ${toEmail} (${userName})`);
-    console.log(`Verification OTP: [ ${otp} ] (Valid for 15 mins)`);
-    console.log(`======================================================\n`);
-    return { sent: false, devMode: true };
-  }
-
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"${process.env.SMTP_FROM_NAME || 'SmartEye Civic Care'}" <${process.env.SMTP_USER}>`,
-      to: toEmail,
-      subject: `[SmartEye] Your Verification Code: ${otp}`,
-      html: htmlContent,
-    });
-    return { sent: true };
-  } catch (err) {
-    console.error(`[Verification Service] Failed to send OTP to ${toEmail}:`, err.message);
-    return { sent: false, error: err.message };
-  }
+  return sendEmail({
+    to: toEmail,
+    subject: `[SmartEye] Your Verification Code: ${otp}`,
+    html: htmlContent,
+    devSummary: () => {
+      console.log(`Verification OTP: [ ${otp} ] (Valid for 15 mins)`);
+    },
+  });
 }
