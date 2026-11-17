@@ -25,11 +25,8 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err) {
       if (err.data?.requiresVerification) {
-        setUnverifiedInfo({
-          email: err.data.email || email,
-          debugOtp: err.data.debugOtp || '',
-        });
-        setError('Please verify your email address to continue.');
+        setUnverifiedInfo({ email: err.data.email || email });
+        setError('Please verify your email address before logging in.');
       } else {
         setError(err.message);
       }
@@ -72,17 +69,12 @@ export default function Login() {
             <div className="rounded-lg bg-status-urgent/10 border border-status-urgent/20 p-3 text-sm text-status-urgent space-y-2">
               <p>{error}</p>
               {unverifiedInfo && (
-                <div className="pt-1 border-t border-status-urgent/20 flex flex-col gap-1 text-xs">
-                  {unverifiedInfo.debugOtp && (
-                    <span className="text-brand-light font-mono">
-                      Verification code detected: <strong>{unverifiedInfo.debugOtp}</strong>
-                    </span>
-                  )}
+                <div className="pt-1 border-t border-status-urgent/20 text-xs">
                   <Link
-                    to={`/signup?verifyEmail=${encodeURIComponent(unverifiedInfo.email)}&otp=${encodeURIComponent(unverifiedInfo.debugOtp)}`}
+                    to={`/signup?verifyEmail=${encodeURIComponent(unverifiedInfo.email)}`}
                     className="font-semibold text-brand-light hover:underline inline-flex items-center gap-1"
                   >
-                    Click here to enter code & activate account →
+                    Click here to enter your 6-digit verification code →
                   </Link>
                 </div>
               )}

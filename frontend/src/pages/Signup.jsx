@@ -21,16 +21,10 @@ export default function Signup() {
 
   useEffect(() => {
     const verifyEmail = searchParams.get('verifyEmail');
-    const paramOtp = searchParams.get('otp');
     if (verifyEmail) {
       setEmail(verifyEmail);
       setStep('verify');
-      if (paramOtp) {
-        setOtp(paramOtp);
-        setInfo(`Verification code auto-detected: [${paramOtp}]`);
-      } else {
-        setInfo(`Please verify your email address: ${verifyEmail}`);
-      }
+      setInfo(`Please check your inbox (${verifyEmail}) for the 6-digit verification code.`);
     }
   }, [searchParams]);
 
@@ -43,12 +37,7 @@ export default function Signup() {
       const res = await register(name, email, password);
       if (res && res.requiresVerification) {
         setStep('verify');
-        if (res.debugOtp) {
-          setOtp(res.debugOtp);
-          setInfo(`Verification code auto-detected: [${res.debugOtp}]`);
-        } else {
-          setInfo('We sent a 6-digit verification code to your email.');
-        }
+        setInfo('We sent a 6-digit verification code to your email inbox. Please check your inbox (and spam folder).');
       } else {
         navigate('/dashboard');
       }
@@ -78,12 +67,7 @@ export default function Signup() {
     setResending(true);
     try {
       const res = await citizenApi.resendOtp({ email });
-      if (res && res.debugOtp) {
-        setOtp(res.debugOtp);
-        setInfo(`New verification code auto-detected: [${res.debugOtp}]`);
-      } else {
-        setInfo(res.message || 'New code sent!');
-      }
+      setInfo(res?.message || 'A new verification code has been dispatched to your email.');
     } catch (err) {
       setError(err.message);
     } finally {

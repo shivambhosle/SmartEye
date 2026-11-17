@@ -1,15 +1,72 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Universal email sender that supports:
- * 1. Resend REST API (over HTTPS Port 443 - NEVER blocked by cloud firewalls like Render Free)
- * 2. Nodemailer SMTP (for local dev or servers with open SMTP ports)
- * 3. Dev Mode fallback (logs to console)
+ * Universal email dispatcher that handles:
+ * 1. Google Apps Script Webhook (Native Gmail via HTTPS port 443 - zero block, arrives in Inbox)
+ * 2. Brevo API (Transactional API via HTTPS port 443)
+ * 3. Resend API (Transactional API via HTTPS port 443)
+ * 4. Nodemailer SMTP (Local development or paid servers with open SMTP ports)
  */
-async function sendEmail({ to, subject, html, devSummary }) {
+async function dispatchEmail({ to, subject, html, devSummary }) {
   if (!to) return { sent: false };
 
-  // 1. Try Resend REST API (HTTPS Port 443) if configured
+  // 1. Google Apps Script Webhook (Recommended for Gmail on cloud hosts like Render)
+  if (process.env.GMAIL_WEBHOOK_URL) {
+    try {
+      const fromName = process.env.SMTP_FROM_NAME || 'SmartEye Civic Care';
+      const res = await fetch(process.env.GMAIL_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to,
+          subject,
+          html,
+          fromName,
+        }),
+        redirect: 'follow',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success || data.status === 'ok')) {
+        console.log(`[Notification Service] Email delivered via Gmail Webhook to ${to}`);
+        return { sent: true, method: 'gmail-webhook' };
+      }
+      console.warn(`[Notification Service] Gmail Webhook response:`, data);
+    } catch (err) {
+      console.error(`[Notification Service] Gmail Webhook failed:`, err.message);
+    }
+  }
+
+  // 2. Brevo Transactional Email API (HTTPS port 443)
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const senderEmail = process.env.SMTP_USER || 'smarteye.civic@gmail.com';
+      const senderName = process.env.SMTP_FROM_NAME || 'SmartEye Civic Care';
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.messageId) {
+        console.log(`[Notification Service] Email delivered via Brevo API to ${to}: ${data.messageId}`);
+        return { sent: true, method: 'brevo' };
+      }
+      console.warn(`[Notification Service] Brevo API response:`, data);
+    } catch (err) {
+      console.error(`[Notification Service] Brevo API failed:`, err.message);
+    }
+  }
+
+  // 3. Resend Email API (HTTPS port 443)
   if (process.env.RESEND_API_KEY) {
     try {
       const fromAddr = process.env.SMTP_FROM || 'SmartEye <onboarding@resend.dev>';
@@ -26,18 +83,18 @@ async function sendEmail({ to, subject, html, devSummary }) {
           html,
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.id) {
         console.log(`[Notification Service] Email delivered via Resend API to ${to}: ${data.id}`);
-        return { sent: true, messageId: data.id };
+        return { sent: true, method: 'resend' };
       }
-      console.warn(`[Notification Service] Resend API responded with error:`, data);
+      console.warn(`[Notification Service] Resend API error:`, data);
     } catch (err) {
-      console.error(`[Notification Service] Resend API request failed:`, err.message);
+      console.error(`[Notification Service] Resend API failed:`, err.message);
     }
   }
 
-  // 2. Try Nodemailer SMTP (with strict 4s timeout so Render never hangs)
+  // 4. Nodemailer SMTP (Works locally or on servers with open SMTP ports)
   const transporter = getTransporter();
   if (transporter) {
     try {
@@ -49,17 +106,17 @@ async function sendEmail({ to, subject, html, devSummary }) {
         html,
       });
       console.log(`[Notification Service] Email delivered via SMTP to ${to}: ${info.messageId}`);
-      return { sent: true, messageId: info.messageId };
+      return { sent: true, messageId: info.messageId, method: 'smtp' };
     } catch (err) {
-      console.warn(`[Notification Service] SMTP delivery failed (${err.code || err.message}). Note: Render Free blocks ports 465/587.`);
+      console.warn(`[Notification Service] SMTP send failed (${err.code || err.message}). Note: Render Free blocks ports 465/587.`);
       return { sent: false, error: err.message };
     }
   }
 
-  // 3. Dev Mode logging
+  // 5. Dev Mode Fallback
   if (devSummary) {
     console.log(`\n======================================================`);
-    console.log(`[Notification Service] (DEV / CONSOLE MODE)`);
+    console.log(`[Notification Service] (DEV MODE - SMTP / Webhook not active)`);
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
     devSummary();
@@ -77,10 +134,9 @@ export function getTransporter() {
   const service = process.env.SMTP_SERVICE;
 
   if (!user || !pass) {
-    return null; // SMTP not configured
+    return null;
   }
 
-  // If using Gmail
   if (service?.toLowerCase() === 'gmail' || host?.includes('gmail')) {
     return nodemailer.createTransport({
       service: 'gmail',
@@ -149,13 +205,11 @@ export async function sendIssueRegisteredEmail({ toEmail, userName, issue }) {
     </div>
   `;
 
-  return sendEmail({
+  return dispatchEmail({
     to: toEmail,
     subject: `[SmartEye] Issue #${issueIdShort} Registered: ${readableCategory}`,
     html: htmlContent,
-    devSummary: () => {
-      console.log(`Assigned Department: ${departmentName}`);
-    },
+    devSummary: () => console.log(`Assigned Department: ${departmentName}`),
   });
 }
 
@@ -195,13 +249,11 @@ export async function sendLoginAlertEmail({ toEmail, userName, time, ip, userAge
     </div>
   `;
 
-  return sendEmail({
+  return dispatchEmail({
     to: toEmail,
     subject: `[SmartEye] Security Alert: New Login to your Account`,
     html: htmlContent,
-    devSummary: () => {
-      console.log(`IP: ${ip} | UserAgent: ${userAgent}`);
-    },
+    devSummary: () => console.log(`IP: ${ip} | UserAgent: ${userAgent}`),
   });
 }
 
@@ -267,13 +319,11 @@ export async function sendStatusUpdateEmail({ toEmail, userName, issue, newStatu
     </div>
   `;
 
-  return sendEmail({
+  return dispatchEmail({
     to: toEmail,
     subject: `[SmartEye] Update on #${issueIdShort}: ${readableStatus}`,
     html: htmlContent,
-    devSummary: () => {
-      console.log(`Category: ${readableCategory} | New Status: ${newStatus}`);
-    },
+    devSummary: () => console.log(`Category: ${readableCategory} | New Status: ${newStatus}`),
   });
 }
 
@@ -295,12 +345,10 @@ export async function sendVerificationOtpEmail({ toEmail, userName, otp }) {
     </div>
   `;
 
-  return sendEmail({
+  return dispatchEmail({
     to: toEmail,
     subject: `[SmartEye] Your Verification Code: ${otp}`,
     html: htmlContent,
-    devSummary: () => {
-      console.log(`Verification OTP: [ ${otp} ] (Valid for 15 mins)`);
-    },
+    devSummary: () => console.log(`Verification OTP: [ ${otp} ] (Valid for 15 mins)`),
   });
 }

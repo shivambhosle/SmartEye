@@ -20,11 +20,22 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (req, res) => {
+  const method = process.env.GMAIL_WEBHOOK_URL
+    ? 'gmail-webhook'
+    : process.env.BREVO_API_KEY
+    ? 'brevo-api'
+    : process.env.RESEND_API_KEY
+    ? 'resend-api'
+    : process.env.SMTP_USER
+    ? 'smtp'
+    : 'none';
+
   res.json({
     status: 'ok',
     phase: 3,
-    emailConfigured: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
-    sender: process.env.SMTP_USER || 'none',
+    emailConfigured: method !== 'none',
+    deliveryMethod: method,
+    sender: process.env.SMTP_USER || 'smarteye.civic@gmail.com',
   });
 });
 

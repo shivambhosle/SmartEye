@@ -67,7 +67,6 @@ router.post('/register', async (req, res) => {
       userId: user._id,
       email: user.email,
       requiresVerification: true,
-      debugOtp: otp,
     });
   } catch (err) {
     console.error('[auth/register]', err);
@@ -149,10 +148,7 @@ router.post('/resend-otp', async (req, res) => {
 
     await sendVerificationOtpEmail({ toEmail: user.email, userName: user.name, otp });
 
-    res.json({
-      message: 'New verification code has been dispatched to your email.',
-      debugOtp: otp,
-    });
+    res.json({ message: 'New verification code has been dispatched to your email.' });
   } catch (err) {
     console.error('[auth/resend-otp]', err);
     res.status(500).json({ message: 'Server error while resending verification code.' });
@@ -193,10 +189,9 @@ router.post('/login', async (req, res) => {
         );
       }
       return res.status(403).json({
-        message: 'Please verify your email address before logging in.',
+        message: 'Please verify your email address before logging in. A verification code has been dispatched to your email.',
         requiresVerification: true,
         email: user.email,
-        debugOtp: user.verificationOtp,
       });
     }
 
