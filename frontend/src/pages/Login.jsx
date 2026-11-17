@@ -9,27 +9,17 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [unverifiedInfo, setUnverifiedInfo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    setUnverifiedInfo(null);
     setSubmitting(true);
     try {
       await login(email, password);
-      // Citizen login always goes to the citizen dashboard — this session
-      // has nothing to do with staff access, even if this account also
-      // happens to have an admin/officer role in the database.
       navigate('/dashboard');
     } catch (err) {
-      if (err.data?.requiresVerification) {
-        setUnverifiedInfo({ email: err.data.email || email });
-        setError('Please verify your email address before logging in.');
-      } else {
-        setError(err.message);
-      }
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setSubmitting(false);
     }
@@ -37,9 +27,9 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-xl border border-border p-8">
+      <div className="w-full max-w-md rounded-xl border border-border p-8 bg-surface/50 backdrop-blur">
         <div className="mb-6 flex items-center justify-center gap-2 text-xl font-bold">
-          <Eye className="h-6 w-6" /> SmartEye
+          <Eye className="h-6 w-6 text-brand" /> SmartEye
         </div>
         <h2 className="mb-6 text-center text-2xl font-bold">Login</h2>
 
@@ -51,7 +41,8 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm"
+              placeholder="name@example.com"
+              className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:border-brand"
             />
           </div>
           <div>
@@ -61,37 +52,31 @@ export default function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm"
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:border-brand"
             />
           </div>
 
           {error && (
-            <div className="rounded-lg bg-status-urgent/10 border border-status-urgent/20 p-3 text-sm text-status-urgent space-y-2">
-              <p>{error}</p>
-              {unverifiedInfo && (
-                <div className="pt-1 border-t border-status-urgent/20 text-xs">
-                  <Link
-                    to={`/signup?verifyEmail=${encodeURIComponent(unverifiedInfo.email)}`}
-                    className="font-semibold text-brand-light hover:underline inline-flex items-center gap-1"
-                  >
-                    Click here to enter your 6-digit verification code →
-                  </Link>
-                </div>
-              )}
+            <div className="rounded-lg bg-status-urgent/10 border border-status-urgent/20 p-3 text-sm text-status-urgent">
+              {error}
             </div>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-gradient-to-r from-brand to-brand-dark py-3 font-semibold text-white disabled:opacity-60"
+            className="w-full rounded-lg bg-gradient-to-r from-brand to-brand-dark py-3 font-semibold text-white shadow-lg hover:opacity-95 disabled:opacity-60 transition-opacity"
           >
             {submitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Don't have an account? <Link to="/signup" className="text-brand-light">Sign Up</Link>
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-brand-light font-semibold hover:underline">
+            Sign Up
+          </Link>
         </p>
       </div>
     </div>
