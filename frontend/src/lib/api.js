@@ -1,4 +1,11 @@
-const BASE_URL = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '';
+const BASE_URL = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api` : '/api';
+
+export function getPhotoUrl(photoUrl) {
+  if (!photoUrl) return '';
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
+  return `${API_BASE.replace(/\/$/, '')}${photoUrl}`;
+}
 
 export function createApiClient(tokenKey) {
   async function request(path, { method = 'GET', body, isFormData = false } = {}) {

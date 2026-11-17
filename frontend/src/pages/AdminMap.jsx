@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 //import { api } from '../lib/api.js';
-import { staffApi as api } from '../lib/api.js';
+import { staffApi as api, getPhotoUrl } from '../lib/api.js';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -40,7 +40,7 @@ export default function AdminMap() {
             <Marker key={issue._id} position={{ lat: issue.location.lat, lng: issue.location.lng }}>
               <Popup>
                 <div className="text-sm">
-                  <img src={issue.photoUrl} alt={issue.category} className="mb-2 h-24 w-full rounded object-cover" />
+                  <img src={getPhotoUrl(issue.photoUrl)} alt={issue.category} className="mb-2 h-24 w-full rounded object-cover" />
                   <p className="font-bold">Issue #{issue._id.slice(-4)}</p>
                   <p className="capitalize"><strong>Category:</strong> {issue.category?.replace(/_/g, ' ')}</p>
                   {issue.department && <p><strong>Department:</strong> {issue.department}</p>}

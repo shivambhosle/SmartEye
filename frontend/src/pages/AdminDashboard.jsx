@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Search, FolderOpen, Settings, CheckCircle2, TrendingUp, Eye, Sparkles, ShieldCheck, ShieldAlert, X } from 'lucide-react';
 //import { api } from '../lib/api.js';
 import { StatusBadge, PriorityBadge } from '../components/Badges.jsx';
-import { staffApi as api } from '../lib/api.js';
+import { staffApi as api, getPhotoUrl } from '../lib/api.js';
 
 const STATUS_OPTIONS = ['open', 'in-progress', 'resolved'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'];
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
             {filtered.map((issue) => (
               <tr key={issue._id} className="border-t border-border">
                 <td className="px-4 py-3">
-                  <img src={issue.photoUrl} alt={issue.category} className="h-10 w-10 rounded object-cover" />
+                  <img src={getPhotoUrl(issue.photoUrl)} alt={issue.category} className="h-10 w-10 rounded object-cover" />
                 </td>
                 <td className="px-4 py-3">#{issue._id.slice(-4)}</td>
                 <td className="px-4 py-3">
@@ -186,7 +186,7 @@ export default function AdminDashboard() {
                 <td className="whitespace-nowrap px-4 py-3">{new Date(issue.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <a href={issue.photoUrl} target="_blank" rel="noreferrer" className="rounded p-1.5 text-brand-light hover:bg-surface" title="View photo">
+                    <a href={getPhotoUrl(issue.photoUrl)} target="_blank" rel="noreferrer" className="rounded p-1.5 text-brand-light hover:bg-surface" title="View photo">
                       <Eye className="h-4 w-4" />
                     </a>
                     <select
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
       <div className="space-y-3 lg:hidden">
         {filtered.map((issue) => (
           <div key={issue._id} className="flex gap-3 rounded-xl border border-border p-4">
-            <img src={issue.photoUrl} alt={issue.category} className="h-16 w-16 flex-shrink-0 rounded object-cover" />
+            <img src={getPhotoUrl(issue.photoUrl)} alt={issue.category} className="h-16 w-16 flex-shrink-0 rounded object-cover" />
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center justify-between">
                 <span className="font-semibold">#{issue._id.slice(-4)}</span>
@@ -271,13 +271,13 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <img
-                  src={triageIssue.photoUrl}
+                  src={getPhotoUrl(triageIssue.photoUrl)}
                   alt={triageIssue.category}
                   className="w-full h-48 sm:h-56 rounded-xl object-cover border border-border shadow-inner"
                 />
                 <div className="mt-2 flex items-center justify-between text-xs text-muted">
                   <span>Source: <strong className="capitalize text-foreground">{triageIssue.captureMode || 'gallery'}</strong></span>
-                  <a href={triageIssue.photoUrl} target="_blank" rel="noreferrer" className="text-brand-light hover:underline font-medium">
+                  <a href={getPhotoUrl(triageIssue.photoUrl)} target="_blank" rel="noreferrer" className="text-brand-light hover:underline font-medium">
                     Open Full Image ↗
                   </a>
                 </div>

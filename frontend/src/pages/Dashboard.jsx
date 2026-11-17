@@ -4,7 +4,7 @@ import { FolderOpen, Settings, CheckCircle2, TrendingUp, Plus } from 'lucide-rea
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 //import { api } from '../lib/api.js';
 import { StatusBadge, PriorityBadge } from '../components/Badges.jsx';
-import { citizenApi as api } from '../lib/api.js';
+import { citizenApi as api, getPhotoUrl } from '../lib/api.js';
 
 const STATUS_COLORS = { open: '#f0b429', 'in-progress': '#3b4252', resolved: '#22c55e' };
 
@@ -151,7 +151,7 @@ export default function Dashboard() {
                   {issues.map((issue) => (
                     <tr key={issue._id} className="border-t border-border">
                       <td className="px-4 py-3">
-                        <img src={issue.photoUrl} alt={issue.category} className="h-10 w-10 rounded object-cover" />
+                        <img src={getPhotoUrl(issue.photoUrl)} alt={issue.category} className="h-10 w-10 rounded object-cover" />
                       </td>
                       <td className="px-4 py-3">#{issue._id.slice(-4)}</td>
                       <td className="px-4 py-3">
@@ -184,7 +184,7 @@ export default function Dashboard() {
             <div className="space-y-3 sm:hidden">
               {issues.map((issue) => (
                 <div key={issue._id} className="flex gap-3 rounded-xl border border-border p-4">
-                  <img src={issue.photoUrl} alt={issue.category} className="h-16 w-16 flex-shrink-0 rounded object-cover" />
+                  <img src={getPhotoUrl(issue.photoUrl)} alt={issue.category} className="h-16 w-16 flex-shrink-0 rounded object-cover" />
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center justify-between">
                       <span className="font-semibold">#{issue._id.slice(-4)}</span>
