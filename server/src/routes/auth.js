@@ -176,6 +176,25 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
+    // Require email verification before logging in
+    if (user.isVerified === false) {
+      // Auto-dispatch a fresh OTP if expired or missing
+      if (!user.verificationOtp || (user.otpExpiresAt && new Date() > user.otpExpiresAt)) {
+        const otp = generateOtp();
+        user.verificationOtp = otp;
+        user.otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+        sendVerificationOtpEmail({ toEmail: user.email, userName: user.name, otp }).catch((err) =>
+          console.warn('[auth/login] Resend OTP error:', err.message)
+        );
+      }
+      return res.status(403).json({
+        message: 'Please verify your email address before logging in. A verification code has been dispatched to your email.',
+        requiresVerification: true,
+        email: user.email,
+      });
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role, name: user.name },
       process.env.JWT_SECRET || 'smarteye-secret-key',

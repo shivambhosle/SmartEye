@@ -20,7 +20,12 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', phase: 3 });
+  res.json({
+    status: 'ok',
+    phase: 3,
+    emailConfigured: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
+    sender: process.env.SMTP_USER || 'none',
+  });
 });
 
 app.use('/api/auth', authRoutes);
