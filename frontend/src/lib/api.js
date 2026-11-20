@@ -37,10 +37,10 @@ export function createApiClient(tokenKey) {
     createIssue: (formData) => request('/issues', { method: 'POST', body: formData, isFormData: true }),
     getMyIssues: () => request('/issues/mine'),
     getAllIssues: () => request('/issues'),
-    updateIssueStatus: (id, status, resolutionPhotoUrl, resolutionNote) =>
+    updateIssueStatus: (id, status, resolutionPhotoUrl, resolutionNote, rejectionReason) =>
       request(`/issues/${id}/status`, {
         method: 'PUT',
-        body: { status, resolutionPhotoUrl, resolutionNote },
+        body: { status, resolutionPhotoUrl, resolutionNote, rejectionReason },
       }),
     checkDuplicates: (lat, lng, category) =>
       request(`/issues/check-duplicates?lat=${lat}&lng=${lng}&category=${encodeURIComponent(category || '')}`),

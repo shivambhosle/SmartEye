@@ -6,7 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis
 import { StatusBadge, PriorityBadge } from '../components/Badges.jsx';
 import { citizenApi as api, getPhotoUrl } from '../lib/api.js';
 
-const STATUS_COLORS = { open: '#f0b429', 'in-progress': '#3b4252', resolved: '#22c55e' };
+const STATUS_COLORS = { open: '#f0b429', 'in-progress': '#3b4252', resolved: '#22c55e', rejected: '#ef4444' };
 
 function computeStats(issues) {
   const open = issues.filter((i) => i.status === 'open').length;
@@ -55,6 +55,7 @@ export default function Dashboard() {
     { name: 'Open', value: stats.open, color: STATUS_COLORS.open },
     { name: 'In Progress', value: stats.inProgress, color: STATUS_COLORS['in-progress'] },
     { name: 'Resolved', value: stats.resolved, color: STATUS_COLORS.resolved },
+    { name: 'Rejected', value: issues.filter((i) => i.status === 'rejected').length, color: STATUS_COLORS.rejected },
   ].filter((s) => s.value > 0);
   const resolutionByCategory = computeResolutionByCategory(issues);
 
@@ -173,7 +174,14 @@ export default function Dashboard() {
                         )}
                       </td>
                       <td className="px-4 py-3"><PriorityBadge priority={issue.priority} /></td>
-                      <td className="px-4 py-3"><StatusBadge status={issue.status} /></td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={issue.status} />
+                        {issue.status === 'rejected' && (
+                          <div className="mt-1 text-[11px] text-red-400 font-medium max-w-[200px]" title={issue.rejectionReason}>
+                            ⚠️ {issue.rejectionReason || 'Prohibited / Spoofed Media'}
+                          </div>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-3">{new Date(issue.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -190,6 +198,11 @@ export default function Dashboard() {
                       <span className="font-semibold">#{issue._id.slice(-4)}</span>
                       <StatusBadge status={issue.status} />
                     </div>
+                    {issue.status === 'rejected' && (
+                      <div className="mb-1 text-[11px] text-red-400 font-medium">
+                        ⚠️ {issue.rejectionReason || 'Prohibited / Spoofed Media'}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-xs text-muted">
                       <span className="capitalize">{issue.category?.replace(/_/g, ' ')}</span>
                       <PriorityBadge priority={issue.priority} />

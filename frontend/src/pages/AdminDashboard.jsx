@@ -4,7 +4,7 @@ import { Search, FolderOpen, Settings, CheckCircle2, TrendingUp, Eye, Sparkles, 
 import { StatusBadge, PriorityBadge } from '../components/Badges.jsx';
 import { staffApi as api, getPhotoUrl } from '../lib/api.js';
 
-const STATUS_OPTIONS = ['open', 'in-progress', 'resolved'];
+const STATUS_OPTIONS = ['open', 'in-progress', 'resolved', 'rejected'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'];
 
 export default function AdminDashboard() {
@@ -57,12 +57,12 @@ export default function AdminDashboard() {
     { icon: TrendingUp, value: `${rate}%`, label: 'Resolution Rate', color: 'text-brand-light bg-brand/15' },
   ];
 
-  async function updateStatus(id, newStatus) {
+  async function updateStatus(id, newStatus, resolutionPhotoUrl, resolutionNote, rejectionReason) {
     // Optimistic update — reflect the change immediately, then sync with the server.
     // If the request fails, we just reload from the server to correct it.
-    setIssues((prev) => prev.map((i) => (i._id === id ? { ...i, status: newStatus } : i)));
+    setIssues((prev) => prev.map((i) => (i._id === id ? { ...i, status: newStatus, rejectionReason } : i)));
     try {
-      await api.updateIssueStatus(id, newStatus);
+      await api.updateIssueStatus(id, newStatus, resolutionPhotoUrl, resolutionNote, rejectionReason);
     } catch (err) {
       alert(`Failed to update status: ${err.message}`);
       loadIssues();
@@ -191,7 +191,19 @@ export default function AdminDashboard() {
                     </a>
                     <select
                       value={issue.status}
-                      onChange={(e) => updateStatus(issue._id, e.target.value)}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        if (newStatus === 'rejected') {
+                          const reason = window.prompt(
+                            'Enter rejection reason (citizen will be notified of municipal guidelines):',
+                            'Prohibited Activity: Screen/Re-photo spoof detected. Live on-site physical evidence is required.'
+                          );
+                          if (!reason) return;
+                          updateStatus(issue._id, newStatus, null, null, reason);
+                        } else {
+                          updateStatus(issue._id, newStatus);
+                        }
+                      }}
                       className="rounded border border-border bg-surface px-2 py-1 text-xs"
                     >
                       {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -235,7 +247,19 @@ export default function AdminDashboard() {
 
               <select
                 value={issue.status}
-                onChange={(e) => updateStatus(issue._id, e.target.value)}
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  if (newStatus === 'rejected') {
+                    const reason = window.prompt(
+                      'Enter rejection reason (citizen will be notified of municipal guidelines):',
+                      'Prohibited Activity: Screen/Re-photo spoof detected. Live on-site physical evidence is required.'
+                    );
+                    if (!reason) return;
+                    updateStatus(issue._id, newStatus, null, null, reason);
+                  } else {
+                    updateStatus(issue._id, newStatus);
+                  }
+                }}
                 className="w-full rounded border border-border bg-surface px-2 py-2 text-xs"
               >
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -358,10 +382,32 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            <div className="flex justify-end pt-2 border-t border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
+              {triageIssue.status !== 'rejected' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultReason = triageIssue.aiAnalysis?.isAuthentic === false
+                      ? `Prohibited Activity: Screen/Re-photo spoof detected (${triageIssue.aiAnalysis?.authenticityNote || 'invalid media'}). Live on-site physical evidence is required.`
+                      : 'Prohibited Activity: Screen/Re-photo spoof detected. Live on-site physical evidence is required.';
+                    const reason = window.prompt(
+                      'Confirm rejection reason (this will be sent to the citizen with official municipal guidelines):',
+                      defaultReason
+                    );
+                    if (reason) {
+                      updateStatus(triageIssue._id, 'rejected', null, null, reason);
+                      setTriageIssue(null);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-red-600/20 border border-red-500/50 px-4 py-2 text-xs font-bold text-red-300 hover:bg-red-600/30 transition-colors"
+                >
+                  <ShieldAlert className="h-4 w-4 text-red-400" />
+                  Reject Report as Prohibited Spoof
+                </button>
+              )}
               <button
                 onClick={() => setTriageIssue(null)}
-                className="rounded-lg bg-surface-alt px-5 py-2 text-sm font-semibold hover:bg-border transition-colors"
+                className="rounded-lg bg-surface-alt px-5 py-2 text-sm font-semibold hover:bg-border transition-colors ml-auto"
               >
                 Close Report
               </button>

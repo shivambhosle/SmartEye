@@ -230,16 +230,23 @@ router.get('/', requireAuth, requireRole('admin', 'officer'), async (req, res) =
 // PUT /api/issues/:id/status — admin/officer updates an issue's status.
 router.put('/:id/status', requireAuth, requireRole('admin', 'officer'), async (req, res) => {
   try {
-    const { status, resolutionPhotoUrl, resolutionNote } = req.body;
+    const { status, resolutionPhotoUrl, resolutionNote, rejectionReason } = req.body;
     const update = { status };
     if (status === 'resolved') {
       update.resolvedAt = new Date();
+    }
+    if (status === 'rejected') {
+      update.rejectedAt = new Date();
+      update.rejectionReason = rejectionReason || 'Prohibited Activity: Screen/Re-photo spoof detected.';
     }
     if (resolutionPhotoUrl) {
       update.resolutionPhotoUrl = resolutionPhotoUrl;
     }
     if (resolutionNote) {
       update.resolutionNote = resolutionNote;
+    }
+    if (rejectionReason) {
+      update.rejectionReason = rejectionReason;
     }
 
     const issue = await Issue.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
@@ -274,6 +281,7 @@ router.put('/:id/status', requireAuth, requireRole('admin', 'officer'), async (r
       'open': 'Report Reopened',
       'in-progress': 'Work In Progress — Crew Assigned',
       'resolved': 'Issue Resolved & Closed',
+      'rejected': 'Report Rejected — Prohibited / Spoofed Media',
     };
 
     // Dispatch email notifications and create in-app notifications asynchronously
@@ -285,7 +293,7 @@ router.put('/:id/status', requireAuth, requireRole('admin', 'officer'), async (r
         issue,
         newStatus: status,
         resolutionPhotoUrl: issue.resolutionPhotoUrl,
-        officerNote: resolutionNote,
+        officerNote: resolutionNote || issue.rejectionReason || rejectionReason,
       }).catch((err) => console.error('[status-email-error]', err));
 
       // 2. Create In-App Notification
@@ -294,7 +302,9 @@ router.put('/:id/status', requireAuth, requireRole('admin', 'officer'), async (r
           recipient: recipient.id,
           issueId: issue._id,
           title: statusTitles[status] || `Status Updated to ${status}`,
-          message: `The reported ${readableCategory} status has changed to "${status}".`,
+          message: status === 'rejected'
+            ? `Your report for ${readableCategory} was rejected: ${issue.rejectionReason || 'Prohibited media detected.'}`
+            : `The reported ${readableCategory} status has changed to "${status}".`,
           status,
         });
       } catch (err) {

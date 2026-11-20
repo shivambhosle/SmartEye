@@ -53,13 +53,15 @@ const issueSchema = new mongoose.Schema(
     // the database never need a translation layer between them.
     status: {
       type: String,
-      enum: ['open', 'in-progress', 'resolved'],
+      enum: ['open', 'in-progress', 'resolved', 'rejected'],
       default: 'open',
     },
     assignedOfficer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     resolutionPhotoUrl: { type: String },
     resolutionNote: { type: String, default: '' },
+    rejectionReason: { type: String, default: '' },
     resolvedAt: { type: Date, default: null }, // set when status flips to 'resolved' — powers resolution-time analytics
+    rejectedAt: { type: Date, default: null }, // set when status flips to 'rejected' for spoofing or invalid evidence
   },
   { timestamps: true }
 );

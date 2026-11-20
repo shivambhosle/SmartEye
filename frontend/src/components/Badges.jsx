@@ -2,6 +2,7 @@ const STATUS_STYLES = {
   open: 'bg-status-open/15 text-status-open',
   'in-progress': 'bg-status-progress/40 text-foreground',
   resolved: 'bg-status-resolved/15 text-status-resolved',
+  rejected: 'bg-red-500/15 text-red-400 border border-red-500/30',
 };
 
 const PRIORITY_STYLES = {

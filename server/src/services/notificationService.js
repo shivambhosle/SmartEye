@@ -267,12 +267,14 @@ export async function sendStatusUpdateEmail({ toEmail, userName, issue, newStatu
     'open': 'Registered / Under Review',
     'in-progress': 'In Progress (Municipal Crew Assigned)',
     'resolved': 'Resolved & Closed',
+    'rejected': 'REJECTED — Prohibited / Invalid Evidence',
   };
 
   const statusColors = {
     'open': '#f59e0b',
     'in-progress': '#3b82f6',
     'resolved': '#10b981',
+    'rejected': '#ef4444',
   };
 
   const readableCategory = (issue.category || 'Civic Issue').replace(/_/g, ' ').toUpperCase();
@@ -307,6 +309,27 @@ export async function sendStatusUpdateEmail({ toEmail, userName, issue, newStatu
         <div style="margin: 20px 0; text-align: center;">
           <p style="font-size: 14px; color: #10b981; font-weight: bold; margin-bottom: 8px;">Resolution Proof (Work Completed):</p>
           <img src="${resolutionPhotoUrl.startsWith('http') ? resolutionPhotoUrl : `http://localhost:3000${resolutionPhotoUrl}`}" alt="Resolution Proof" style="max-width: 100%; max-height: 240px; border-radius: 8px; border: 1px solid #334155;" />
+        </div>
+      `
+          : ''
+      }
+
+      ${
+        newStatus === 'rejected'
+          ? `
+        <div style="background-color: #450a0a; border: 1px solid #ef4444; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #f87171; margin: 0 0 8px 0; font-size: 15px; display: flex; align-items: center;">⚠️ Notice of Violation & Rejection</h3>
+          <p style="color: #fecaca; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">
+            This report was formally <strong>rejected</strong> by municipal administrators due to submission of <strong>prohibited or spoofed media</strong> (such as photos taken of computer/phone screens, synthetic duplicates, or non-authentic imagery).
+          </p>
+          <div style="background-color: #1e1b1b; padding: 10px 14px; border-radius: 6px; font-size: 12px; color: #fca5a5;">
+            <strong>Mandatory Civic Guidelines:</strong>
+            <ul style="margin: 6px 0 0 0; padding-left: 18px; line-height: 1.5;">
+              <li>All civic reports must feature authentic, live physical photographs taken on location.</li>
+              <li>Re-photographing computer screens or printed images is strictly prohibited.</li>
+              <li>Repeated submissions of spoofed media may result in account review or restriction.</li>
+            </ul>
+          </div>
         </div>
       `
           : ''
